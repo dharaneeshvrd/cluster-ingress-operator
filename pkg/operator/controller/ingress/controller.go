@@ -945,6 +945,7 @@ func (r *reconciler) ensureIngressDeleted(ingress *operatorv1.IngressController)
 		if err := r.ensureRouterDeleted(ingress); err != nil {
 			errs = append(errs, fmt.Errorf("failed to delete deployment for ingress %s/%s: %v", ingress.Namespace, ingress.Name, err))
 		}
+		log.Info("checking existing router deployment")
 		if haveDepl, _, err := r.currentRouterDeployment(ingress); err != nil {
 			errs = append(errs, fmt.Errorf("failed to get deployment for ingress %s/%s: %v", ingress.Namespace, ingress.Name, err))
 		} else if haveDepl {
@@ -955,11 +956,13 @@ func (r *reconciler) ensureIngressDeleted(ingress *operatorv1.IngressController)
 			// a race condition in which we clear route status, then the router pod will race to re-admit the status in
 			// these few milliseconds before it initiates the graceful shutdown. The only way to avoid is to wait
 			// until all router pods are deleted.
+			log.Info("checking router pods deleted or not")
 			if allDeleted, err := r.allRouterPodsDeleted(ingress); err != nil {
 				errs = append(errs, err)
 			} else if allDeleted {
 				// Deployment has been deleted and there are no more pods left.
 				// Clear all routes status for this ingress controller.
+				log.Info("clearing routes status")
 				statusErrs := r.clearAllRoutesStatusForIngressController(ingress.ObjectMeta.Name)
 				errs = append(errs, statusErrs...)
 			} else {
@@ -967,6 +970,10 @@ func (r *reconciler) ensureIngressDeleted(ingress *operatorv1.IngressController)
 			}
 		}
 	}
+	log.Info("********************************")
+	log.Info("sleeping for 600 secs")
+	time.Sleep(600)
+	log.Info("********************************")
 
 	// Delete the metrics related to the ingresscontroller
 	DeleteIngressControllerConditionsMetric(ingress)
