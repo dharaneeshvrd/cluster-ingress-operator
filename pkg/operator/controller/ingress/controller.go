@@ -965,6 +965,11 @@ func (r *reconciler) ensureIngressDeleted(ingress *operatorv1.IngressController)
 			} else {
 				errs = append(errs, retryable.New(fmt.Errorf("not all router pods have been deleted for %s/%s", ingress.Namespace, ingress.Name), 15*time.Second))
 			}
+
+			isExists, _, _ := r.currentLoadBalancerService(ingress)
+			if isExists {
+				errs = append(errs, retryable.New(errors.New("load balancer service still exists"), 15*time.Second))
+			}
 		}
 	}
 
